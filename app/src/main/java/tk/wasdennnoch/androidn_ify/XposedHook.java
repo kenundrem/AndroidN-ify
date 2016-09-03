@@ -1,5 +1,7 @@
 package tk.wasdennnoch.androidn_ify;
 
+import android.os.Build;
+
 import de.robv.android.xposed.IXposedHookInitPackageResources;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.IXposedHookZygoteInit;
@@ -9,12 +11,20 @@ import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_InitPackageResources;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
-import tk.wasdennnoch.androidn_ify.notifications.NotificationPanelHooks;
-import tk.wasdennnoch.androidn_ify.notifications.NotificationsHooks;
-import tk.wasdennnoch.androidn_ify.notifications.StatusBarHeaderHooks;
-import tk.wasdennnoch.androidn_ify.recents.doubletap.DoubleTapHwKeys;
-import tk.wasdennnoch.androidn_ify.recents.doubletap.DoubleTapSwKeys;
+import tk.wasdennnoch.androidn_ify.phone.emergency.EmergencyHooks;
 import tk.wasdennnoch.androidn_ify.settings.SettingsHooks;
+import tk.wasdennnoch.androidn_ify.systemui.SystemUIHooks;
+import tk.wasdennnoch.androidn_ify.systemui.notifications.NotificationHooks;
+import tk.wasdennnoch.androidn_ify.systemui.notifications.NotificationPanelHooks;
+import tk.wasdennnoch.androidn_ify.systemui.notifications.StatusBarHeaderHooks;
+import tk.wasdennnoch.androidn_ify.systemui.notifications.stack.StackScrollAlgorithmHooks;
+import tk.wasdennnoch.androidn_ify.systemui.qs.tiles.helper.LiveDisplayObserver;
+import tk.wasdennnoch.androidn_ify.systemui.recents.doubletap.DoubleTapHwKeys;
+import tk.wasdennnoch.androidn_ify.systemui.recents.doubletap.DoubleTapSwKeys;
+import tk.wasdennnoch.androidn_ify.systemui.recents.navigate.RecentsNavigation;
+import tk.wasdennnoch.androidn_ify.systemui.recents.stack.RecentsStackHooks;
+import tk.wasdennnoch.androidn_ify.utils.ConfigUtils;
+import tk.wasdennnoch.androidn_ify.utils.RomUtils;
 
 /**
  * Right now it's impossible to explicitly use classes of the hooked package
@@ -31,17 +41,17 @@ import tk.wasdennnoch.androidn_ify.settings.SettingsHooks;
  */
 public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit, IXposedHookInitPackageResources {
 
-
     private static final String TAG = "XposedHook";
     private static final String LOG_FORMAT = "[Android N-ify] %1$s %2$s: %3$s";
     public static final String PACKAGE_ANDROID = "android";
     public static final String PACKAGE_SYSTEMUI = "com.android.systemui";
     public static final String PACKAGE_SETTINGS = "com.android.settings";
+    public static final String PACKAGE_PHONE = "com.android.phone";
     public static final String PACKAGE_OWN = "tk.wasdennnoch.androidn_ify";
     public static final String SETTINGS_OWN = PACKAGE_OWN + ".ui.SettingsActivity";
+
     public static boolean debug = false;
     private static String sModulePath;
-
     private static XSharedPreferences sPrefs;
 
     public static void logE(String tag, String msg, Throwable t) {
@@ -54,7 +64,6 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
         XposedBridge.log(String.format(LOG_FORMAT, "[WARNING]", tag, msg));
     }
 
-    @SuppressWarnings("unused")
     public static void logI(String tag, String msg) {
         XposedBridge.log(String.format(LOG_FORMAT, "[INFO]", tag, msg));
     }
@@ -66,7 +75,19 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
     @Override
     public void initZygote(StartupParam startupParam) throws Throwable {
         sModulePath = startupParam.modulePath;
-        sPrefs = new XSharedPreferences(XposedHook.class.getPackage().getName());
+        sPrefs = new XSharedPreferences(PACKAGE_OWN);
+        RomUtils.init(sPrefs);
+
+        logI(TAG, "Version " + BuildConfig.VERSION_NAME + " (" + BuildConfig.VERSION_CODE + ")");
+        //noinspection ConstantConditions
+        if (BuildConst.BUILD_SERVER_VERSION == 0) {
+            logI(TAG, "Official Build; Release: " + !BuildConfig.DEBUG + " (" + BuildConfig.BUILD_TYPE + ")");
+        } else {
+            logI(TAG, "Remote Build; Version: " + BuildConst.BUILD_SERVER_VERSION);
+        }
+
+        logI(TAG, "ROM type: " + sPrefs.getString("rom", "undefined"));
+
         if (!sPrefs.getBoolean("can_read_prefs", false)) {
             // With SELinux enforcing, it might happen that we don't have access
             // to the prefs file. Test this by reading a test key that should be
@@ -74,7 +95,6 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
             // user has never opened the preference screen before.
             logW(TAG, "Can't read prefs file, default values will be applied in hooks!");
         }
-        debug = sPrefs.getBoolean("debug_log", false);
     }
 
     @Override
@@ -82,16 +102,24 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
 
         switch (lpparam.packageName) {
             case PACKAGE_SETTINGS:
-                SettingsHooks.hook(lpparam.classLoader, sPrefs);
+                SettingsHooks.hook(lpparam.classLoader);
                 break;
             case PACKAGE_SYSTEMUI:
-                DoubleTapSwKeys.hook(lpparam.classLoader, sPrefs);
-                StatusBarHeaderHooks.hook(lpparam.classLoader, sPrefs);
-                NotificationPanelHooks.hook(lpparam.classLoader, sPrefs);
-                NotificationsHooks.hookSystemUI(lpparam.classLoader, sPrefs);
+                SystemUIHooks.hookSystemUI(lpparam.classLoader);
+                StatusBarHeaderHooks.hook(lpparam.classLoader);
+                NotificationPanelHooks.hook(lpparam.classLoader);
+                StackScrollAlgorithmHooks.hook(lpparam.classLoader);
+                NotificationHooks.hookSystemUI(lpparam.classLoader);
+                RecentsStackHooks.hookSystemUI(lpparam.classLoader);
+                RecentsNavigation.hookSystemUI(lpparam.classLoader);
+                DoubleTapSwKeys.hook(lpparam.classLoader);
                 break;
             case PACKAGE_ANDROID:
-                DoubleTapHwKeys.hook(lpparam.classLoader, sPrefs);
+                DoubleTapHwKeys.hook(lpparam.classLoader);
+                LiveDisplayObserver.hook(lpparam.classLoader);
+                break;
+            case PACKAGE_PHONE:
+                EmergencyHooks.hook(lpparam.classLoader);
                 break;
             case PACKAGE_OWN:
                 XposedHelpers.findAndHookMethod(SETTINGS_OWN, lpparam.classLoader, "isActivated", XC_MethodReplacement.returnConstant(true));
@@ -101,7 +129,17 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
         }
 
         // Has to be hooked in every app as every app creates own instances of the Notification.Builder
-        NotificationsHooks.hook(lpparam.classLoader, sPrefs);
+        NotificationHooks.hook(lpparam.classLoader);
+
+        // This actually is only used in the system process, but every app has access, so just to be sure hook everything
+        if (ConfigUtils.qs().enable_qs_editor) {
+            try {
+                Class<?> classCMStatusBarManager = XposedHelpers.findClass("cyanogenmod.app.CMStatusBarManager", lpparam.classLoader);
+                XposedBridge.hookAllMethods(classCMStatusBarManager, "publishTile", XC_MethodReplacement.DO_NOTHING);
+                XposedBridge.hookAllMethods(classCMStatusBarManager, "publishTileAsUser", XC_MethodReplacement.DO_NOTHING);
+            } catch (Throwable ignore) {
+            }
+        }
 
     }
 
@@ -110,15 +148,20 @@ public class XposedHook implements IXposedHookLoadPackage, IXposedHookZygoteInit
 
         switch (resparam.packageName) {
             case PACKAGE_SYSTEMUI:
-                NotificationsHooks.hookResSystemui(resparam, sPrefs, sModulePath);
-                StatusBarHeaderHooks.hookResSystemui(resparam, sPrefs);
+                NotificationHooks.hookResSystemui(resparam, sModulePath);
+                StatusBarHeaderHooks.hookResSystemui(resparam, sModulePath);
+                RecentsStackHooks.hookResSystemui(resparam, sModulePath);
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    RecentsNavigation.hookResSystemui(resparam);
+                }
                 break;
         }
 
-        // Has too be hooked in every app too for some reason,probably
-        // because every hook only applies to the current process
-        NotificationsHooks.hookResAndroid(resparam, sPrefs);
-
+        // Has to be hooked in every app because every hook only applies to the current process
+        ConfigUtils.notifications().loadBlacklistedApps();
+        if (!ConfigUtils.notifications().blacklistedApps.contains(resparam.packageName)) {
+            NotificationHooks.hookResAndroid(resparam);
+        }
     }
 
 }

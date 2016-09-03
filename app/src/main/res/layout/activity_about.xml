@@ -12,11 +12,10 @@
         android:orientation="vertical">
 
         <ImageView
-            android:id="@+id/icon"
             android:layout_width="130dp"
             android:layout_height="130dp"
             android:contentDescription="@null"
-            android:src="@drawable/ic_launcher_big"/>
+            android:src="@drawable/platlogo"/>
 
         <TextView
             android:layout_width="wrap_content"
@@ -33,7 +32,20 @@
             android:text="@string/about_author"/>
 
         <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="@string/about_translator"/>
+
+        <TextView
             android:id="@+id/version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"/>
+
+        <TextView
+            android:id="@+id/updates"
+            android:visibility="gone"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"/>

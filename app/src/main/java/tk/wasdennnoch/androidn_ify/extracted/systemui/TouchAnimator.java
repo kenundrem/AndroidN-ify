@@ -1,6 +1,5 @@
 package tk.wasdennnoch.androidn_ify.extracted.systemui;
 
-import android.util.FloatProperty;
 import android.util.MathUtils;
 import android.util.Property;
 import android.view.View;
@@ -9,36 +8,8 @@ import android.view.animation.Interpolator;
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("unused")
 public class TouchAnimator {
 
-    /*private static final FloatProperty<TouchAnimator2> POSITION = new FloatProperty("position") {
-        public Float get(TouchAnimator2 paramAnonymousTouchAnimator) {
-            return Float.valueOf(TouchAnimator2. - get1(paramAnonymousTouchAnimator));
-        }
-
-        public void setValue(TouchAnimator2 paramAnonymousTouchAnimator, float paramAnonymousFloat) {
-            paramAnonymousTouchAnimator.setPosition(paramAnonymousFloat);
-        }
-    };*/
-
-    private static final FloatProperty POSITION = new FloatProperty("position") {
-        public Float get(TouchAnimator touchanimator) {
-            return touchanimator.mLastT;
-        }
-
-        public Object get(Object obj) {
-            return get((TouchAnimator) obj);
-        }
-
-        public void setValue(TouchAnimator touchanimator, float f) {
-            touchanimator.setPosition(f);
-        }
-
-        public void setValue(Object obj, float f) {
-            setValue((TouchAnimator) obj, f);
-        }
-    };
     private final Interpolator mInterpolator;
     private final KeyframeSet[] mKeyframeSets;
     private float mLastT = -1.0F;
@@ -95,7 +66,7 @@ public class TouchAnimator {
             mValues.add(paramKeyframeSet);
         }
 
-        private static Property<View, Float> getProperty(View paramObject, String paramString, Class<?> paramClass) {
+        private static Property<View, Float> getProperty(String paramString) {
             if (paramString.equals("translationX")) {
                 return View.TRANSLATION_X;
             }
@@ -127,7 +98,7 @@ public class TouchAnimator {
         }
 
         public Builder addFloat(View paramObject, String paramString, float... paramVarArgs) {
-            add(paramObject, KeyframeSet.ofFloat(getProperty(paramObject, paramString, Float.TYPE), paramVarArgs));
+            add(paramObject, KeyframeSet.ofFloat(getProperty(paramString), paramVarArgs));
             return this;
         }
 
@@ -215,4 +186,5 @@ public class TouchAnimator {
         public void onAnimationStarted() {
         }
     }
+
 }

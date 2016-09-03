@@ -1,19 +1,14 @@
 apply plugin: 'com.android.application'
 
 android {
-    dexOptions {
-        incremental true
-        maxProcessCount 4
-        javaMaxHeapSize "2g"
-    }
     compileSdkVersion 23
     buildToolsVersion '23.0.3'
     defaultConfig {
         applicationId "tk.wasdennnoch.androidn_ify"
         minSdkVersion 21
         targetSdkVersion 23
-        versionCode 5
-        versionName "0.2.0"
+        versionCode 6
+        versionName "0.3.0"
     }
     buildTypes {
         release {
@@ -23,9 +18,16 @@ android {
     }
     productFlavors {
     }
+    lintOptions {
+        abortOnError false
+    }
+    useLibrary 'org.apache.http.legacy'
 }
 
 dependencies {
-    provided files('libs-provide/XposedBridgeApi-20150213.jar')
+    provided 'de.robv.android.xposed:api:81'
+    provided 'de.robv.android.xposed:api:81:sources'
     provided files('libs-provide/android_hidden_api_23.jar')
+    compile 'com.android.support:recyclerview-v7:23.4.0'
+    compile 'com.android.support:palette-v7:23.4.0'
 }
